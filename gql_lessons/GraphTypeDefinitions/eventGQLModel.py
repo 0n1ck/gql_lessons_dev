@@ -23,4 +23,3 @@ class EventGQLModel:
     @classmethod
     async def resolve_reference(cls, id: uuid.UUID):
         return EventGQLModel(id=id)
-    

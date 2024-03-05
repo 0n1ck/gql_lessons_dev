@@ -16,6 +16,8 @@ GroupGQLModel = Annotated["GroupGQLModel",strawberryA.lazy(".groupGQLModel")]
 PlanGQLModel = Annotated["PlanGQLModel",strawberryA.lazy(".planGQLModel")]
 UserGQLModel = Annotated["UserGQLModel",strawberryA.lazy(".userGQLModel")]
 
+from .BaseGQLModel import BaseGQLModel
+
 
 @asynccontextmanager
 async def withInfo(info):
@@ -45,22 +47,22 @@ def getLoaders(info)-> Loaders:
     keys=["id"],
     description="""Entity representing a planned lesson for timetable creation""",
 )
-class PlannedLessonGQLModel:
+class PlannedLessonGQLModel(BaseGQLModel):
     @classmethod
-    async def resolve_reference(cls, info: strawberryA.types.Info, id: uuid.UUID):
-        result = None
-        if id is not None:
-            loader = getLoaders(info=info).plan_lessons
-            # print(loader, flush=True)
-            if isinstance(id, str):
-                id = uuid.UUID(id)
-            result = await loader.load(id)
-            if result is not None:
-                result._type_definition = cls._type_definition  # little hack :)
-                result.__strawberry_definition__ = (
-                    cls._strawberry_definition
-                )  # some version of strawberry changed :(
-        return result
+    # async def resolve_reference(cls, info: strawberryA.types.Info, id: uuid.UUID):
+    #     result = None
+    #     if id is not None:
+    #         loader = getLoaders(info=info).plan_lessons
+    #         # print(loader, flush=True)
+    #         if isinstance(id, str):
+    #             id = uuid.UUID(id)
+    #         result = await loader.load(id)
+    #         if result is not None:
+    #             result._type_definition = cls._type_definition  # little hack :)
+    #             result.__strawberry_definition__ = (
+    #                 cls._strawberry_definition
+    #             )  # some version of strawberry changed :(
+    #     return result
 
     @strawberryA.field(description="""Primary key""")
     def id(self) -> uuid.UUID:
@@ -479,10 +481,20 @@ async def planned_lesson_update(self, info: strawberryA.types.Info, lesson: Plan
 @strawberryA.mutation(description="Removes planned lesson - D operation")
 async def planned_lesson_remove(self, info: strawberryA.types.Info, lesson: PlannedLessonDeleteGQLModel) -> PlanResultGQLModel:
     asyncSessionMaker = asyncSessionMakerFromInfo(info)
+    loader = getLoaders(info).plan_lessons
+    rows = await loader.filter_by(id=lesson.id, plan_id=lesson.plan_id)
+    row = next(rows, None)
     await resolveRemovePlan(asyncSessionMaker, lesson.id)
     result = PlanResultGQLModel()
-    result.msg = "ok"
-    result.id = lesson.plan_id
+    # result.msg = "ok"
+    # result.id = lesson.plan_id
+    if row is None:
+        result.msg = "ok i guess"
+    else:
+        await loader.delete(row.id)
+        result.msg = "ok"
+    result.id = lesson.id
+    return result
         
     return result
 
