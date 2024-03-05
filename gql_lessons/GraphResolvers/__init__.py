@@ -24,6 +24,7 @@ from gql_lessons.DBDefinitions import (
     UserPlanModel,
     GroupPlanModel,
     FacilityPlanModel,
+    PlanModel,
 )
 
 # from gql_lessons.DBDefinitions import UnavailabilityPL, UnavailabilityUser, UnavailabilityFacility
@@ -143,6 +144,20 @@ async def resolveRemovePlan(asyncSessionMaker, plan_id):
         await session.execute(deleteBStmt)
         await session.execute(deleteCStmt)
         await session.execute(deleteDStmt)
+        await session.commit()
+
+async def resolveRemovePlanAll(asyncSessionMaker, plan_id):
+    deleteAStmt = delete(UserPlanModel).where(UserPlanModel.planlesson_id==plan_id)
+    deleteBStmt = delete(GroupPlanModel).where(GroupPlanModel.planlesson_id==plan_id)
+    deleteCStmt = delete(FacilityPlanModel).where(FacilityPlanModel.planlesson_id==plan_id)
+    deleteDStmt = delete(PlannedLessonModel).where(PlannedLessonModel.id==plan_id)
+    deleteFStmt = delete(PlanModel).where(PlanModel.id==plan_id)
+    async with asyncSessionMaker() as session:
+        await session.execute(deleteAStmt)
+        await session.execute(deleteBStmt)
+        await session.execute(deleteCStmt)
+        await session.execute(deleteDStmt)
+        await session.execute(deleteFStmt)
         await session.commit()
 
 # NEW CODE

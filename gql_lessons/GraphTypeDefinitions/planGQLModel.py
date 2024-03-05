@@ -7,7 +7,7 @@ import uuid
 
 from .BaseGQLModel import BaseGQLModel
 from .plannedLessonGQLModel import PlannedLessonGQLModel
-from gql_lessons.GraphResolvers import resolveRemovePlan
+from gql_lessons.GraphResolvers import resolveRemovePlan, resolveRemovePlanAll
 
 
 @asynccontextmanager
@@ -165,7 +165,7 @@ async def plan_update(self, info: strawberryA.types.Info, plan: PlanUpdateGQLMod
 @strawberryA.mutation(description="Removes plan - D operation")
 async def plan_remove(self, info: strawberryA.types.Info, plan: PlanDeleteGQLModel) -> PlanResultGQLModel:
     asyncSessionMaker = asyncSessionMakerFromInfo(info)
-    await resolveRemovePlan(asyncSessionMaker, plan.id)
+    await resolveRemovePlanAll(asyncSessionMaker, plan.id)
     result = PlanResultGQLModel()
     result.msg = "ok"
     if plan.id is not None:
