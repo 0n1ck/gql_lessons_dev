@@ -1,102 +1,87 @@
-from typing import List, Union, Optional, Annotated, Optional
+from typing import List, Union, Annotated, Optional
 import strawberry as strawberryA
-from contextlib import asynccontextmanager
 import datetime
+import typing
 import uuid
-from gql_lessons.utils.Dataloaders import Loaders 
-
-
-
-AcLessonTypeGQLModel = Annotated["AcLessonTypeGQLModel",strawberryA.lazy(".acLessonTypeGQLModel")]
-AcSemesterGQLModel= Annotated["AcSemesterGQLModel",strawberryA.lazy(".acSemesterGQLModel")]
-AcTopicGQLModel = Annotated["AcTopicGQLModel",strawberryA.lazy(".acTopicGQLModel")]
-EventGQLModel = Annotated["EventGQLModel",strawberryA.lazy(".eventGQLModel")]
-FacilityGQLModel = Annotated["FacilityGQLModel",strawberryA.lazy(".facilityGQLModel")]
-GroupGQLModel = Annotated["GroupGQLModel",strawberryA.lazy(".groupGQLModel")]
-PlanGQLModel = Annotated["PlanGQLModel",strawberryA.lazy(".planGQLModel")]
-UserGQLModel = Annotated["UserGQLModel",strawberryA.lazy(".userGQLModel")]
-
+import strawberry
+from gql_lessons.utils.Dataloaders import getLoadersFromInfo, getUserFromInfo
 from .BaseGQLModel import BaseGQLModel
 
+from ._GraphResolvers import (
+    resolve_id,
+    resolve_name,
+    resolve_name_en,
+    resolve_order,
+    resolve_length,
+    resolve_startdate,
 
-@asynccontextmanager
-async def withInfo(info):
-    asyncSessionMaker = info.context["asyncSessionMaker"]
-    async with asyncSessionMaker() as session:
-        try:
-            yield session
-        finally:
-            pass
+    resolve_enddate,
 
-def asyncSessionMakerFromInfo(info):
-    asyncSessionMaker = info.context["asyncSessionMaker"]
-    return asyncSessionMaker
+    resolve_created,
+    resolve_lastchange,
+    resolve_changedby,
+    resolve_createdby,
+    
+    createRootResolver_by_id,
+)
 
-def AsyncSessionFromInfo(info):
-    print(
-        "obsolete function used AsyncSessionFromInfo, use withInfo context manager instead"
-    )
-    return info.context["session"]
 
-def getLoaders(info)-> Loaders:
-    context = info.context
-    loaders = context["loaders"]
-    return loaders
+UserGQLModel = Annotated["UserGQLModel", strawberry.lazy(".externals")]
+GroupGQLModel = Annotated["GroupGQLModel", strawberry.lazy(".externals")]
+FacilityGQLModel = Annotated["FacilityGQLModel", strawberry.lazy(".externals")]
+
+EventGQLModel = Annotated["EventGQLModel", strawberry.lazy(".externals")]
+
+AcLessonTypeGQLModel = Annotated["AcLessonTypeGQLModel", strawberry.lazy(".externals")]
+AcSemesterGQLModel = Annotated["AcSemesterGQLModel", strawberry.lazy(".externals")]
+AcTopicGQLModel = Annotated["AcTopicGQLModel", strawberry.lazy(".externals")]
+
+from .planGQLModel import PlanGQLModel
+
+
 
 @strawberryA.federation.type(
-    keys=["id"],
-    description="""Entity representing a planned lesson for timetable creation""",
+    keys=["id"], 
+    description="""Entity representing a planned lesson"""
 )
 class PlannedLessonGQLModel(BaseGQLModel):
     @classmethod
-    # async def resolve_reference(cls, info: strawberryA.types.Info, id: uuid.UUID):
-    #     result = None
-    #     if id is not None:
-    #         loader = getLoaders(info=info).plan_lessons
-    #         # print(loader, flush=True)
-    #         if isinstance(id, str):
-    #             id = uuid.UUID(id)
-    #         result = await loader.load(id)
-    #         if result is not None:
-    #             result._type_definition = cls._type_definition  # little hack :)
-    #             result.__strawberry_definition__ = (
-    #                 cls._strawberry_definition
-    #             )  # some version of strawberry changed :(
+    def getLoader(cls, info):
+        return getLoadersFromInfo(info).plan_lessons
+
+    id = resolve_id
+    name = resolve_name
+    order = resolve_order
+    length = resolve_length
+    startdate = resolve_startdate
+
+    enddate = resolve_enddate
+
+    created = resolve_created
+    lastchange = resolve_lastchange
+    createdby = resolve_createdby
+    changedby = resolve_changedby
+
+    
+
+    # @strawberryA.field(description="""Type of acredited lesson""")
+    # async def type(self, info: strawberryA.types.Info) -> Optional ["AcLessonTypeGQLModel"]:
+    #     from .externals import AcLessonTypeGQLModel  # Import here to avoid circular dependency
+    #     result = await AcLessonTypeGQLModel.resolve_reference(info, self.lessontype_id)
     #     return result
-
-    @strawberryA.field(description="""Primary key""")
-    def id(self) -> uuid.UUID:
-        return self.id
-
-    @strawberryA.field(description="""Timestap""")
-    def lastchange(self) -> datetime.datetime:
-        return self.lastchange
-
-    @strawberryA.field(description="""primary key""")
-    def name(self) -> str:
-        return self.name
-
-    @strawberryA.field(description="""order""")
-    def order(self) -> int:
-        return self.order
-
-    @strawberryA.field(description="""primary key""")
-    def length(self) -> Union[int, None]:
-        return self.length
-
-    @strawberryA.field(description="""type of lesson (lecture, ...)""")
-    async def type(self, info) -> Optional["AcLessonTypeGQLModel"]:
-        from .acLessonTypeGQLModel import AcLessonTypeGQLModel
-        result = await AcLessonTypeGQLModel.resolve_reference(id=self.lessontype_id)
-        return result
-
+    
+    # @strawberry.field(description="""Plan, related to a lesson""")
+    # def plan(self) -> Union["PlanGQLModel", None]:
+    #     from .planGQLModel import PlanGQLModel
+    #     return PlanGQLModel(id=self.plan_id)
+    
     @strawberryA.field(
         description="""planned lesson linked to (aka master planned lesson)"""
     )
     async def linked_to(
         self, info: strawberryA.types.Info
     ) -> Union["PlannedLessonGQLModel", None]:
-        loader = getLoaders(info).plan_lessons
+        loader = getLoadersFromInfo(info).plan_lessons
         result = None
         if self.linkedlesson_id is not None:
             result = await loader.load(self.linkedlesson_id)
@@ -108,161 +93,113 @@ class PlannedLessonGQLModel(BaseGQLModel):
     async def linked_with(
         self, info: strawberryA.types.Info
     ) -> List["PlannedLessonGQLModel"]:
-        loader = getLoaders(info).plan_lessons
+        loader = getLoadersFromInfo(info).plan_lessons
         result1 = await loader.load(self.id)
         if self.linkedlesson_id is not None:
             result2 = await loader.filter_by(linkedlesson_id=self.id)
             result1 = [result1, *result2]
         return result1
 
-    @strawberryA.field(description="""teachers""")
-    async def users(self, info: strawberryA.types.Info) -> List["UserGQLModel"]:
-        from .userGQLModel import UserGQLModel
-        loader = getLoaders(info).userplan_lessons
-        result = await loader.filter_by(planlesson_id=self.id)
-        return [UserGQLModel(id=item.user_id) for item in result]
-
-    @strawberryA.field(description="""study groups""")
-    async def groups(self, info: strawberryA.types.Info) -> List["GroupGQLModel"]:
-        from .groupGQLModel import GroupGQLModel
-        loader = getLoaders(info).groupplan_lessons
-        result = await loader.filter_by(planlesson_id=self.id)
-        return [GroupGQLModel(id=item.group_id) for item in result]
-
-    @strawberryA.field(description="""facilities""")
-    async def facilities(
-        self, info: strawberryA.types.Info
-    ) -> List["FacilityGQLModel"]:
-        from .facilityGQLModel import FacilityGQLModel
-        loader = getLoaders(info).facilityplan_lessons
-        result = await loader.filter_by(planlesson_id=self.id)
-        return [FacilityGQLModel(id=item.facility_id) for item in result]
-
-    @strawberryA.field(description="""linked event""")
-    async def event(self, info: strawberryA.types.Info) -> Union["EventGQLModel", None]:
-        from .eventGQLModel import EventGQLModel
-        if self.event_id is None:
-            result = None
-        else:
-            result = EventGQLModel(id=self.event_id)
-        return result
-
-    @strawberryA.field(description="""linked topic from accreditation""")
-    async def topic(
-        self, info: strawberryA.types.Info
-    ) -> Union["AcTopicGQLModel", None]:
-        from .acTopicGQLModel import AcTopicGQLModel
-        if self.topic_id is None:
-            result = None
-        else:
-            result = AcTopicGQLModel(id=self.topic_id)
-        return result
-
-    @strawberryA.field(
-        description="""linked subject semester from program (accreditation)"""
-    )
-    async def semester(
-        self, info: strawberryA.types.Info
-    ) -> Union["AcSemesterGQLModel", None]:
-        from .acSemesterGQLModel import AcSemesterGQLModel
-        if self.semester_id is None:
-            result = None
-        else:
-            result = AcSemesterGQLModel(id=self.semester_id)
-        return result
-
-    @strawberryA.field(
-        description="""linked subject semester from program (accreditation)"""
-    )
+    @strawberryA.field(description="""List of plan lessons""")
     async def plan(
         self, info: strawberryA.types.Info
-    ) -> Union["PlanGQLModel", None]:
+    ) -> List["PlanGQLModel"]:
         from .planGQLModel import PlanGQLModel
-        print("PlannedLessonGQLModel.plan", self.plan_id)
-        result = await PlanGQLModel.resolve_reference(info, self.plan_id)
-        print("PlannedLessonGQLModel.plan", result)
+        loader = getLoadersFromInfo(info).plans
+        result = await loader.filter_by(plan_id=self.id)
         return result
+
+    @strawberry.field(description="""User, related to a lesson""")
+    def users(self) -> Union["UserGQLModel", None]:
+        from .externals import UserGQLModel
+        return UserGQLModel(id=self.user_id)
+
+    @strawberry.field(description="""Group, related to a lesson""")
+    def groups(self) -> Union["GroupGQLModel", None]:
+        from .externals import GroupGQLModel
+        return GroupGQLModel(id=self.group_id)
+
+    @strawberry.field(description="""Facility, related to a lesson""")
+    def facilities(self) -> Union["FacilityGQLModel", None]:
+        from .externals import FacilityGQLModel
+        return FacilityGQLModel(id=self.facility_id)
+    
+    @strawberry.field(description="""Topic, related to a lesson""")
+    def topic(self) -> Union["AcTopicGQLModel", None]:
+        from .externals import AcTopicGQLModel
+        return AcTopicGQLModel(id=self.topic_id)
+
+    @strawberry.field(description="""Topic, related to a lesson""")
+    def type(self) -> Union["AcLessonTypeGQLModel", None]:
+        from .externals import AcLessonTypeGQLModel
+        return AcLessonTypeGQLModel(id=self.lessontype_id)
+
+    @strawberry.field(description="""Event, related to a lesson""")
+    def event(self) -> Union["EventGQLModel", None]:
+        from .externals import EventGQLModel
+        return EventGQLModel(id=self.event_id)
+    
+    @strawberry.field(description="""Semester, related to a lesson""")
+    def semester(self) -> Union["AcSemesterGQLModel", None]:
+        from .externals import AcSemesterGQLModel
+        return AcSemesterGQLModel(id=self.semester_id)
     
 ###########################################################################################################################
-#
-# zde definujte svuj Query model
-#
+#                                                                                                                         #
+#                                                       Query                                                             #
+#                                                                                                                         #
 ###########################################################################################################################
 
-from gql_lessons.GraphResolvers import (
-    resolvePlannedLessonBySemester,
-    resolvePlannedLessonByTopic,
-    resolvePlannedLessonByEvent,
-    resolvePlannedLessonById,
-    resolvePlannedLessonPage
-)
+from contextlib import asynccontextmanager
 
+from dataclasses import dataclass
+from .utils import createInputs
+@createInputs
+@dataclass
+class PlannedLessonsWhereFilter:
+    name: str
+    lessontype_id: uuid.UUID
+    createdby: uuid.UUID
 
-@strawberryA.field(description="""Planned lesson by its id""")
-async def planned_lesson_by_id(
-    self, info: strawberryA.types.Info, id: uuid.UUID  # Changed to uuid.UUID
-) -> Union[PlannedLessonGQLModel, None]:
-    async with withInfo(info) as session:
-        result = await resolvePlannedLessonById(session,id)  # Convert UUID to string
-        return result
-
-@strawberryA.field(description="""Planned lesson paged""")
+@strawberryA.field(description="""Returns a list of planned lessons""")
 async def planned_lesson_page(
-    self, info: strawberryA.types.Info, skip: int = 0, limit: int = 10
+    self, info: strawberryA.types.Info, skip: int = 0, limit: int = 10,
+    where: Optional[PlannedLessonsWhereFilter] = None
 ) -> List[PlannedLessonGQLModel]:
-    async with withInfo(info) as session:
-        result = await resolvePlannedLessonPage(session, skip, limit)
-        return result
+    loader = getLoadersFromInfo(info).plan_lessons
+    wf = None if where is None else strawberryA.asdict(where)
+    result = await loader.page(skip, limit, where = wf)
+    return result
 
-@strawberryA.field(description="""Planned lesson by its semester (subject)""")
-async def planned_lessons_by_semester(
-    self, info: strawberryA.types.Info, id: uuid.UUID  # Changed to uuid.UUID
-) -> List[PlannedLessonGQLModel]:
-    async with withInfo(info) as session:
-        result = await resolvePlannedLessonBySemester(session, id)  # Convert UUID to string
-        return result
+planned_lesson_by_id = createRootResolver_by_id(PlannedLessonGQLModel, description="Returns planned lesson by its id")
 
-@strawberryA.field(description="""Planned lesson by its topic""")
-async def planned_lessons_by_topic(
-    self, info: strawberryA.types.Info, id: uuid.UUID  # Changed to uuid.UUID
-) -> List[PlannedLessonGQLModel]:
-    async with withInfo(info) as session:
-        result = await resolvePlannedLessonByTopic(session, id)  # Convert UUID to string
-        return result
-
-@strawberryA.field(description="""Planned lesson by its event""")
-async def planned_lessons_by_event(
-    self, info: strawberryA.types.Info, id: uuid.UUID  # Changed to uuid.UUID
-) -> List[PlannedLessonGQLModel]:
-    async with withInfo(info) as session:
-        result = await resolvePlannedLessonByEvent(session, id)  # Convert UUID to string
-        return result
-        
 ###########################################################################################################################
-#
-#
-# Mutations
-#
-#
+#                                                                                                                         #
+#                                                       Models                                                            #
+#                                                                                                                         #
 ###########################################################################################################################
 
 from typing import Optional
 
 @strawberryA.input
 class PlannedLessonInsertGQLModel:
+    id: Optional[uuid.UUID]  = strawberryA.field(default=None, description="could be primary key generated by client, UUID is expected")  # Changed to uuid.UUID
     name: str = strawberryA.field(default=None, description="Name of lesson aka 'Introduction'")
-    plan_id: uuid.UUID = strawberryA.field(default=None, description="which plan contains this lesson")
-    length: Optional[int] = strawberryA.field(default=2, description="how many 45min intervals")
-    startproposal: Optional[datetime.datetime] = strawberryA.field(default=None, description="proposal of datetime")
     order: Optional[int] = strawberryA.field(default=1, description="order of the item in plan")
-
-    plan_id: uuid.UUID = strawberryA.field(default=None, description="which plan contains this lesson")  # Changed to uuid.UUID
+    length: Optional[int] = strawberryA.field(default=2, description="how many 45min intervals")
+    startdate: Optional[datetime.datetime] = strawberryA.field(default=None, description="proposal of datetime")
+    plan_id: uuid.UUID = strawberryA.field(default=None, description="which plan contains this lesson")
+    
     linkedlesson_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="id of lesson from other plan which would be teached with")  # Changed to uuid.UUID
     topic_id: Optional[uuid.UUID] = None  # Changed to uuid.UUID
     lessontype_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="aka Consultation, Laboratory, ...")  # Changed to uuid.UUID
+    
     semester_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="link to semester (subject) from accreditation")  # Changed to uuid.UUID
     event_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="event defining when this would be teached")  # Changed to uuid.UUID
-    id: Optional[uuid.UUID]  = strawberryA.field(default=None, description="could be primary key generated by client, UUID is expected")  # Changed to uuid.UUID
+   
+    plan_id: uuid.UUID = strawberryA.field(default=None, description="which plan contains this lesson")  # Changed to uuid.UUID
+   
+    
 
 @strawberryA.input
 class PlannedLessonUpdateGQLModel:
@@ -271,7 +208,7 @@ class PlannedLessonUpdateGQLModel:
     order: Optional[int] = None
     name: Optional[str] = None
     length: Optional[int] = None
-    startproposal: Optional[datetime.datetime] = None
+    startdate: Optional[datetime.datetime] = None
 
     linkedlesson_id: Optional[uuid.UUID] = None
     topic_id: Optional[uuid.UUID] = None
@@ -289,13 +226,6 @@ class PlannedLessonResultGQLModel:
         print("lesson", self.id)
         result = await PlannedLessonGQLModel.resolve_reference(info, self.id)
         return result
-    
-# @strawberryA.type
-# class PlanResultGQLModel:
-#     id: Union[uuid.UUID, None] = None
-#     msg: str = None
-
-from .planGQLModel import PlanResultGQLModel
 
 @strawberryA.input
 class PlannedLessonDeleteGQLModel:
@@ -303,208 +233,40 @@ class PlannedLessonDeleteGQLModel:
     id: uuid.UUID
     plan_id: Optional[uuid.UUID] = None
 
-   # @strawberryA.field(description="""Result of lesson operation""")
-   # async def plan(self, info: strawberryA.types.Info) -> Union[PlanGQLModel, None]:
-   #     result = await PlanGQLModel.resolve_reference(info, self.id)
-   #     return result
-    
-@strawberryA.input
-class PlannedLessonUserInsertGQLModel:
-    user_id: uuid.UUID
-    planlesson_id: uuid.UUID
-    
-@strawberryA.input
-class PlannedLessonUserDeleteGQLModel:
-    user_id: uuid.UUID
-    planlesson_id: uuid.UUID
+###########################################################################################################################
+#                                                                                                                         #
+#                                                       Mutations                                                         #
+#                                                                                                                         #
+###########################################################################################################################
 
-@strawberryA.input
-class PlannedLessonGroupInsertGQLModel:
-    group_id: uuid.UUID
-    planlesson_id: uuid.UUID
-    
-@strawberryA.input
-class PlannedLessonGroupDeleteGQLModel:
-    group_id: uuid.UUID
-    planlesson_id: uuid.UUID
-
-@strawberryA.input
-class PlannedLessonFacilityInsertGQLModel:
-    facility_id: uuid.UUID
-    planlesson_id: uuid.UUID
-    
-@strawberryA.input
-class PlannedLessonFacilityDeleteGQLModel:
-    facility_id: uuid.UUID
-    planlesson_id: uuid.UUID
-
-@strawberryA.input
-class PlannedLessonAssignmentGQLModel:
-    lastchange: datetime.datetime
-    id: uuid.UUID
-    users: Optional[List[uuid.UUID]] = None
-    facilities: Optional[List[uuid.UUID]] = None
-    groups: Optional[List[uuid.UUID]] = None
-    
-@strawberryA.type
-class PlannedLessonAssignmentResultGQLModel:
-    id: uuid.UUID = None
-    msg: str = None
-
-    @strawberryA.field(description="""Result of user operation""")
-    async def lesson(self, info: strawberryA.types.Info) -> Union[PlannedLessonGQLModel, None]:
-        result = await PlannedLessonGQLModel.resolve_reference(info, self.id)
-        return result
-
-from gql_lessons.GraphResolvers import resolveRemovePlan
-
-# @strawberryA.mutation
-# async def planned_lesson_change_assignment(self, info: strawberryA.types.Info, assignment: PlannedLessonAssignmentGQLModel) -> PlannedLessonAssignmentResultGQLModel:
-#     # loader = getLoaders(info).plan_lessons
-#     # row = await loader.insert(lesson)
-#     if assignment.users is not None:
-#         loader = getLoaders(info).userplan_lessons
-#         rows = await loader.filter_by(planlesson_id=assignment.id)
-#         rowids = set(list(map(lambda item: item.id, rows)))
-#         inputids = set(assignment.users)
-#         toAdd = inputids - rowids
-#         toRemove = rowids - inputids
-
-
-#     result = PlannedLessonResultGQLModel()
-#     result.msg = "not implemented"
-#     result.id = None
-#     return result
-
-@strawberryA.mutation(description="Assings a user to the planned lesson - C operation")
-async def planned_lesson_user_insert(self, info: strawberryA.types.Info, userlesson: PlannedLessonUserInsertGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).userplan_lessons
-    row = await loader.insert(userlesson)
-    result = PlannedLessonResultGQLModel()
-    result.msg = "ok"
-    result.id = userlesson.planlesson_id
-    return result
-
-@strawberryA.mutation(description="Removes the user to the planned lesson - R operation")
-async def planned_lesson_user_delete(self, info: strawberryA.types.Info, userlesson: PlannedLessonUserDeleteGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).userplan_lessons
-    rows = await loader.filter_by(planlesson_id=userlesson.planlesson_id, user_id=userlesson.user_id)
-    row = next(rows, None)
-    result = PlannedLessonResultGQLModel()
-    if row is None:
-        result.msg = "fail"
-    else:
-        print(row)
-        print(row.id)
-        rr = await loader.delete(row.id)
-        # for r in rr.all():
-        #     print(r)
-        result.msg = "ok"
-    result.id = userlesson.planlesson_id
-    print("planned_lesson_user_delete", userlesson.planlesson_id)
-    return result
-
-@strawberryA.mutation(description="Assings a group to the planned lesson - C operation")
-async def planned_lesson_group_insert(self, info: strawberryA.types.Info, grouplesson: PlannedLessonGroupInsertGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).groupplan_lessons
-    row = await loader.insert(grouplesson)
-    result = PlannedLessonResultGQLModel()
-    result.msg = "ok"
-    result.id = row.planlesson_id
-    return result
-
-@strawberryA.mutation(description="Removes the group to the planned lesson - R operation")
-async def planned_lesson_group_delete(self, info: strawberryA.types.Info, grouplesson: PlannedLessonGroupDeleteGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).groupplan_lessons
-    rows = await loader.filter_by(planlesson_id=grouplesson.planlesson_id, group_id=grouplesson.group_id)
-    row = next(rows, None)
-    result = PlannedLessonResultGQLModel()
-    if row is None:
-        result.msg = "fail"
-    else:
-        await loader.delete(row.id)
-        result.msg = "ok"
-    result.id = grouplesson.planlesson_id
-        
-    return result
-
-
-@strawberryA.mutation(description="Assigns a facility to the planned lesson - C operation")
-async def planned_lesson_facility_insert(self, info: strawberryA.types.Info, facilitylesson: PlannedLessonFacilityInsertGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).facilityplan_lessons
-    row = await loader.insert(facilitylesson)
-    result = PlannedLessonResultGQLModel()
-    result.msg = "ok"
-    result.id = row.planlesson_id
-    return result
-
-@strawberryA.mutation(description="Removes the facility to the planned lesson - R operation")
-async def planned_lesson_facility_delete(self, info: strawberryA.types.Info, facilitylesson: PlannedLessonFacilityDeleteGQLModel) -> PlannedLessonResultGQLModel:
-    resolveRemovePlan
-    loader = getLoaders(info).facilityplan_lessons
-    rows = await loader.filter_by(planlesson_id=facilitylesson.planlesson_id, facility_id=facilitylesson.facility_id)
-    row = next(rows, None)
-    result = PlannedLessonResultGQLModel()
-    if row is None:
-        result.msg = "fail"
-    else:
-        await loader.delete(row.id)
-        result.msg = "ok"
-    result.id = facilitylesson.planlesson_id
-    return result
-
-#planned_lesson CRU operace
-#planned_lesson_insert C operace
-@strawberryA.mutation(description="Inserts planned lesson - C operation")
+@strawberryA.mutation(description="Adds a new lesson.")
 async def planned_lesson_insert(self, info: strawberryA.types.Info, lesson: PlannedLessonInsertGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).plan_lessons
+    # user = getUserFromInfo(info)
+    # lesson.createdby = uuid.UUID(user["id"])
+    loader = getLoadersFromInfo(info).plan_lessons
     row = await loader.insert(lesson)
     result = PlannedLessonResultGQLModel()
     result.msg = "ok"
     result.id = row.id
     return result
 
-#planned_lesson_update U operace
-@strawberryA.mutation(description="Updates planned lesson - U operation")
+@strawberryA.mutation(description="Update the lesson.",)
 async def planned_lesson_update(self, info: strawberryA.types.Info, lesson: PlannedLessonUpdateGQLModel) -> PlannedLessonResultGQLModel:
-    loader = getLoaders(info).plan_lessons
+    # user = getUserFromInfo(info)
+    # lesson.changedby = uuid.UUID(user["id"])
+    loader = getLoadersFromInfo(info).plan_lessons
     row = await loader.update(lesson)
     result = PlannedLessonResultGQLModel()
     result.msg = "ok"
     result.id = lesson.id
-    if row is None:
-        result.msg = "fail"
-        
+    result.msg = "ok" if (row is not None) else "fail"
     return result
 
-#planned_lesson_remove D operace
-@strawberryA.mutation(description="Removes planned lesson - D operation")
-async def planned_lesson_remove(self, info: strawberryA.types.Info, lesson: PlannedLessonDeleteGQLModel) -> PlanResultGQLModel:
-    asyncSessionMaker = asyncSessionMakerFromInfo(info)
-    loader = getLoaders(info).plan_lessons
-    rows = await loader.filter_by(id=lesson.id, plan_id=lesson.plan_id)
-    row = next(rows, None)
-    await resolveRemovePlan(asyncSessionMaker, lesson.id)
-    result = PlanResultGQLModel()
-    # result.msg = "ok"
-    # result.id = lesson.plan_id
-    if row is None:
-        result.msg = "ok i guess"
-    else:
-        await loader.delete(row.id)
-        result.msg = "ok"
-    result.id = lesson.id
+@strawberry.mutation(
+    description="Delete the planned lesson.")
+async def planned_lesson_remove(self, info: strawberryA.types.Info, id: uuid.UUID) -> PlannedLessonResultGQLModel:
+    loader = getLoadersFromInfo(info).plan_lessons
+    row = await loader.delete(id=id)
+    result = PlannedLessonResultGQLModel(id=id, msg="ok")
+    result.msg = "fail" if row is None else "ok"
     return result
-        
-    return result
-
-    
-###########################################################################################################################
-#
-# Schema je pouzito v main.py, vsimnete si parametru types, obsahuje vyjmenovane modely. Bez explicitniho vyjmenovani
-# se ve schema objevi jen ty struktury, ktere si strawberry dokaze odvodit z Query. Protoze v teto konkretni implementaci
-# nektere modely nejsou s Query propojene je potreba je explicitne vyjmenovat. Jinak ve federativnim schematu nebude
-# dostupne rozsireni, ktere tento prvek federace implementuje.
-#
-###########################################################################################################################
-

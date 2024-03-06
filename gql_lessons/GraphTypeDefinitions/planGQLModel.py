@@ -1,87 +1,92 @@
-from typing import List, Optional, Annotated, Union
-from unittest import result
+from typing import List, Union, Annotated, Optional
 import strawberry as strawberryA
-from contextlib import asynccontextmanager
 import datetime
+import typing
 import uuid
-
+import strawberry
+from gql_lessons.utils.Dataloaders import getLoadersFromInfo, getUserFromInfo
 from .BaseGQLModel import BaseGQLModel
-from .plannedLessonGQLModel import PlannedLessonGQLModel
-from gql_lessons.GraphResolvers import resolveRemovePlan, resolveRemovePlanAll
 
+from ._GraphResolvers import (
+    resolve_id,
 
-@asynccontextmanager
-async def withInfo(info):
-    asyncSessionMaker = info.context["asyncSessionMaker"]
-    async with asyncSessionMaker() as session:
-        try:
-            yield session
-        finally:
-            pass
-
-def asyncSessionMakerFromInfo(info):
-    asyncSessionMaker = info.context["asyncSessionMaker"]
-    return asyncSessionMaker
-
-def AsyncSessionFromInfo(info):
-    print(
-        "obsolete function used AsyncSessionFromInfo, use withInfo context manager instead"
-    )
-    return info.context["session"]
-
-from gql_lessons.utils.Dataloaders import Loaders
-def getLoaders(info)-> Loaders:
-    context = info.context
-    loaders = context["loaders"]
-    return loaders
-
-@strawberryA.federation.type(
-    keys=["id"],
-    description="""Entity representing a study plan for timetable creation""",
+    resolve_created,
+    resolve_lastchange,
+    resolve_changedby,
+    resolve_createdby,
+    
+    createRootResolver_by_id,
 )
 
-class PlanGQLModel:
+AcSemesterGQLModel = Annotated["AcSemesterGQLModel", strawberry.lazy(".externals")]
+
+
+@strawberryA.federation.type(
+    keys=["id"], 
+    description="""Entity representing a plan"""
+)
+class PlanGQLModel(BaseGQLModel):
     @classmethod
-    def getLoaders(cls, info):
-        return getLoaders(info).plans
+    def getLoader(cls, info):
+        return getLoadersFromInfo(info).plans
+
+    id = resolve_id
+   
+
+    created = resolve_created
+    lastchange = resolve_lastchange
+    createdby = resolve_createdby
+    changedby = resolve_changedby
     
-    @classmethod
-    async def resolve_reference(cls, info: strawberryA.types.Info, id: uuid.UUID):
-        result = None
-        if id is not None:
-            loader = getLoaders(info=info).plans
-            # print(loader, flush=True)
-            if isinstance(id, str):
-                id = uuid.UUID(id)
-            result = await loader.load(id)
-            if result is not None:
-                result._type_definition = cls._type_definition  # little hack :)
-                result.__strawberry_definition__ = (
-                    cls._type_definition
-                )  # some version of strawberry changed :(
-        return result
-
-    @strawberryA.field(description="""Id""")
-    def id(self) -> uuid.UUID:
-        return self.id
-
-    @strawberryA.field(description="""Last changed""")
-    def lastchange(self) -> datetime.datetime:
-        return self.lastchange
-
-    @strawberryA.field(description="""Name""")
-    def name(self) -> str:
-        return self.name
-
-    @strawberryA.field(description="""English name with order""")
-    def name_en(self) -> str:
-        return self.order
+    @strawberry.field(description="""Semester, related to a plan""")
+    def semester(self) -> Union["AcSemesterGQLModel", None]:
+        from .externals import AcSemesterGQLModel
+        return AcSemesterGQLModel(id=self.semester_id)
     
+###########################################################################################################################
+#                                                                                                                         #
+#                                                       Query                                                             #
+#                                                                                                                         #
+###########################################################################################################################
+
+from contextlib import asynccontextmanager
+
+from dataclasses import dataclass
+from .utils import createInputs
+
+@createInputs
+@dataclass
+class PlanWhereFilter:
+    name: str
+    type_id: uuid.UUID
+    createdby: uuid.UUID
+
+@strawberryA.field(description="""Returns a list of plans""")
+async def plan_page(
+    self, info: strawberryA.types.Info, skip: int = 0, limit: int = 10,
+    where: Optional[PlanWhereFilter] = None
+) -> List[PlanGQLModel]:
+    loader = getLoadersFromInfo(info).plans
+    wf = None if where is None else strawberryA.asdict(where)
+    result = await loader.page(skip, limit, where = wf)
+    return result
+
+plan_by_id = createRootResolver_by_id(PlanGQLModel, description="Returns plan by its id")
+
+###########################################################################################################################
+#                                                                                                                         #
+#                                                       Models                                                            #
+#                                                                                                                         #
+###########################################################################################################################
+
+from typing import Optional
+
 @strawberryA.input
 class PlanInsertGQLModel:
     name: Optional[str] = None
     name_en: Optional[str] = ""
     type_id: Optional[uuid.UUID] = None
+    semester_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the semester associated with the plan ", default=None)
 
 @strawberryA.input
 class PlanUpdateGQLModel:
@@ -90,6 +95,7 @@ class PlanUpdateGQLModel:
     name: Optional[str] = None
     name_en: Optional[str] = None
     type_id: Optional[uuid.UUID] = None
+    semester_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the semester associated with the plan ", default=None)
     
 @strawberryA.type
 class PlanResultGQLModel:
@@ -106,167 +112,40 @@ class PlanDeleteGQLModel:
     lastchange: datetime.datetime
     id: uuid.UUID
     plan_id: Optional[uuid.UUID] = None
-    
-#############################################################
-#
-# Queries
-#
-#############################################################
-
-@strawberryA.field(description="""Finds a plan by its id""")
-async def plan_by_id(
-        self, info: strawberryA.types.Info, id: uuid.UUID
-    ) -> Optional[PlanGQLModel]:
-        result = await PlanGQLModel.resolve_reference(info=info,  id=id)
-        return result
-
-@strawberryA.field(description="""Page of plans""")
-async def plan_page(
-        self, info: strawberryA.types.Info, skip: int = 0, limit: int = 20
-    ) -> List[PlanGQLModel]:
-        loader = getLoaders(info).plans
-        result = await loader.page(skip, limit)
-        return result
-#from utils.DBFeeder import randomPlanData
 
 ###########################################################################################################################
-#
-#
-# Mutations
-#
-#
+#                                                                                                                         #
+#                                                       Mutations                                                         #
+#                                                                                                                         #
 ###########################################################################################################################
 
-#plan CRU operace
-#planned_insert C operace
-@strawberryA.mutation(description="Inserts plan - C operation")
+@strawberryA.mutation(description="Adds a new plan.")
 async def plan_insert(self, info: strawberryA.types.Info, plan: PlanInsertGQLModel) -> PlanResultGQLModel:
-    loader = getLoaders(info).plans
+    # user = getUserFromInfo(info)
+    # plan.createdby = uuid.UUID(user["id"])
+    loader = getLoadersFromInfo(info).plans
     row = await loader.insert(plan)
     result = PlanResultGQLModel()
     result.msg = "ok"
     result.id = row.id
     return result
 
-#plan_update U operace
-@strawberryA.mutation(description="Updates plan - U operation")
+@strawberryA.mutation(description="Update the plan.",)
 async def plan_update(self, info: strawberryA.types.Info, plan: PlanUpdateGQLModel) -> PlanResultGQLModel:
-    loader = getLoaders(info).plans
+    # user = getUserFromInfo(info)
+    # plan.changedby = uuid.UUID(user["id"])
+    loader = getLoadersFromInfo(info).plans
     row = await loader.update(plan)
     result = PlanResultGQLModel()
     result.msg = "ok"
     result.id = plan.id
-    if row is None:
-        result.msg = "fail"
-        
+    result.msg = "ok" if (row is not None) else "fail"
     return result
 
-#plan_remove D operace
-@strawberryA.mutation(description="Removes plan - D operation")
-async def plan_remove(self, info: strawberryA.types.Info, plan: PlanDeleteGQLModel) -> PlanResultGQLModel:
-    asyncSessionMaker = asyncSessionMakerFromInfo(info)
-    await resolveRemovePlanAll(asyncSessionMaker, plan.id)
-    result = PlanResultGQLModel()
-    result.msg = "ok"
-    if plan.id is not None:
-        result.id = plan.id
-    else:
-        # Handle the case where plan.plan_id is None, maybe set a default value or raise an error
-        # result.id = SomeDefaultValue
-        pass
-        
+@strawberry.mutation(description="Delete the plan.")
+async def plan_remove(self, info: strawberryA.types.Info, id: uuid.UUID) -> PlanResultGQLModel:
+    loader = getLoadersFromInfo(info).plans
+    row = await loader.delete(id=id)
+    result = PlanResultGQLModel(id=id, msg="ok")
+    result.msg = "fail" if row is None else "ok"
     return result
-
-# @strawberryA.mutation(description="""Creates new plan""")
-# async def plan_insert(self, info: strawberryA.types.Info, plan: PlanInsertGQLModel) -> PlanResultGQLModel:
-#         loader = getLoaders(info).plans
-#         row = await loader.insert(plan)
-#         result = PlanResultGQLModel(id=row.id, msg="ok")
-#         return result
-
-# @strawberryA.mutation(description="""Updates the plan""")
-# async def plan_update(self, info: strawberryA.types.Info, plan: PlanUpdateGQLModel) -> PlanResultGQLModel:
-    
-#         loader = getLoaders(info).plans
-#         row = await loader.update(plan)
-#         result = PlanResultGQLModel()
-#         result.msg = "ok"
-#         result.id = plan.id
-#         if row is None:
-#             result.msg = "fail"           
-#         return result
-
-# @strawberryA.mutation(description="""Assigns the plan to the user. """)
-# async def plan_assign_to(self, info: strawberryA.types.Info, plan_id: strawberryA.ID, user_id: strawberryA.ID) -> PlanResultGQLModel:
-#         loader = getLoaders(info).questions
-#         questions = await loader.filter_by(plan_id=plan_id)
-#         loader = getLoaders(info).answers
-#         for q in questions:
-#             exists = await loader.filter_by(question_id=q.id, user_id=user_id)
-#             if next(exists, None) is None:
-#                 #user has not this particular question
-#                 rowa = await loader.insert(None, {"question_id": q.id, "user_id": user_id})
-#         result = PlanResultGQLModel()
-#         result.msg = "ok"
-#         result.id = plan_id
-            
-#         return result
-
-
-# class PlanGQLModel:
-#     @classmethod
-#     async def resolve_reference(cls, info: strawberryA.types.Info, id: uuid.UUID):
-#         loader = getLoaders(info).psps
-#         result = await loader.load(id)
-#         if result is not None:
-#             result._type_definition = cls._type_definition  # little hack :)
-#         return result
-
-    # @strawberryA.field(description="""primary key""")
-    # def id(self) -> uuid.UUID:
-    #     return self.id
-
-    # @strawberryA.field(description="""Timestap""")
-    # def lastchange(self) -> datetime.datetime:
-    #     return self.lastchange
-    
-    # @strawberryA.field(description="""planned lessons""")
-    # async def lessons(self, info: strawberryA.types.Info) -> List["PlannedLessonGQLModel"]:
-    #     from .plannedLessonGQLModel import PlannedLessonGQLModel
-    #     loader = getLoaders(info).plans
-    #     result = await loader.filter_by(plan_id=self.id)
-    #     return result
-    
-    # @strawberryA.field(description="""acredited semester""")
-    # async def semester(self, info: strawberryA.types.Info) -> Union["AcSemesterGQLModel", None]:
-    #     from .acSemesterGQLModel import AcSemesterGQLModel
-    #     result = await AcSemesterGQLModel.resolve_reference(id=self.semester_id)
-    #   return result
-
-# ###########################################################################################################################
-# #
-# # zde definujte svuj Query model
-# #
-# ###########################################################################################################################
-
-# from gql_lessons.GraphResolvers import (
-#     resolvePlannedLessonBySemester,
-#     resolvePlannedLessonByTopic,
-#     resolvePlannedLessonByEvent,
-# )
-
-
-# @strawberryA.field(description="""Planned lesson by its id""")
-# async def plan_by_id(
-#     self, info: strawberryA.types.Info, id: uuid.UUID
-# ) -> Union[PlanGQLModel, None]:
-#     result = await PlanGQLModel.resolve_reference(info, id)
-#     return result
-
-# @strawberryA.field(description="""Planned lesson paged""")
-# async def plan_page(
-#     self, info: strawberryA.types.Info, skip: int = 0, limit: int = 10
-# ) -> List[PlanGQLModel]:
-#     loader = getLoaders(info).psps
-#     result = await loader.page(skip, limit)
-#     return result

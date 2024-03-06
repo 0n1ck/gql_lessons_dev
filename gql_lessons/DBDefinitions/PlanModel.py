@@ -1,6 +1,7 @@
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
+    String,
     ForeignKey,
     Column,
     DateTime,
@@ -14,6 +15,7 @@ class PlanModel(BaseModel):
     __tablename__ = "plans"
 
     id = UUIDColumn()
+    name = Column(String)
     # neni nadbytecne, topic_id muze byt null, pak je nutne mit semester_id, jedna-li se o akreditovanou vyuku
     semester_id = UUIDFKey(nullable=True)#Column(ForeignKey("acsemesters.id"), index=True, nullable=True)
 
