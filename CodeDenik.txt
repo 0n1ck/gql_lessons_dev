@@ -1,0 +1,14 @@
+Listopad - nevíme co máme dělat
+Prosinec - kolega Novotný udělal UUID
+Leden - začátek
+5.1. - začátek CRUD
+14.1 - skluz
+31.1. - kolega neudělal tělocvik
+1.2 - 1.3 - Zkoušky
+1.3. - konzultace
+5.3 - restrukturalizace projektu podle kolegy Šmída a Špánika
+6.3 - restrukturalizace -> nefungují CRUD
+7.3 - fungují crud, ale nefungují testy -> warningy
+7.3 - popisy, descriptiony a komenty u DB modelů a DB definitions
+8.3 - pochopení mutací a query
+8.3 - ZKOUŠKA
