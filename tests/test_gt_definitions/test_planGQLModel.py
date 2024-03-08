@@ -7,13 +7,13 @@ from .gt_utils import (
 
 
 
-test_reference_plan_lesson = createResolveReferenceTest(tableName='plan_lessons', gqltype='PlannedLessonGQLModel', 
+test_reference_plan = createResolveReferenceTest(tableName='plans', gqltype='PlanGQLModel', 
                                                          attributeNames=["id", "name"])
 
-test_query_form_page = createPageTest(tableName="plan_lessons", queryEndpoint="plannedLessonPage", attributeNames=["id"])
+test_query_form_page = createPageTest(tableName="plans", queryEndpoint="planPage", attributeNames=["id"])
 
 test_query_form_by_id = createByIdTest(
-    tableName="plan_lessons", queryEndpoint="plannedLessonById", attributeNames=["id"]
+    tableName="plans", queryEndpoint="planById", attributeNames=["id"]
 )
 
 

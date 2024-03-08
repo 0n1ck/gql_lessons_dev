@@ -1,0 +1,342 @@
+#Mutations
+
+##Plans
+
+mutation planInsert($id: UUID!, $name: String!) {
+  planInsert(plan: {id: $id, name: $name}) {
+    id
+    msg
+    plan {
+      changedby {
+        id
+      }
+      lastchange
+    }
+  }
+}
+
+query planById($id: UUID!) {
+  planById(id: $id) {
+    id
+    lastchange
+  }
+}
+
+query planPage {
+  planPage(limit: 5) {
+    id
+    lastchange
+  }
+}
+
+mutation planUpdate($id: UUID!, $name2: String!) {
+  planUpdate(plan: {lastchange: "", id: $id, name: $name2}) {
+    id
+    msg
+    plan {
+      id
+      lastchange
+    }
+  }
+}
+
+mutation planRemove($id: UUID!) {
+  planRemove(id: $id) {
+    id
+    msg
+  }
+}
+
+
+variables = {
+  "id":"b754e3e1-3621-4133-8f51-26f678d93201",
+  "name": "name",
+  "name2": "name2"
+ }
+
+############################################################################
+############################################################################
+############################################################################
+
+############################################################################
+############################################################################
+############################################################################
+
+## PlannedLessons
+
+mutation planInsert($id: UUID!, $name: String!) {
+  planInsert(plan: {id: $id, name: $name}) {
+    id
+    msg
+  }
+}
+
+mutation plannedLessonInsert($id: UUID!, $namePL: String!) {
+  plannedLessonInsert(lesson: {name: $namePL, planId: $id}) {
+    id
+    msg
+  }
+}
+
+query plannedLessonById($id: UUID!) {
+  plannedLessonById(id: $id) {
+    id
+    name
+  }
+}
+
+query plannedLessonPage {
+  plannedLessonPage {
+    id
+    lastchange
+    name
+  }
+}
+
+mutation plannedLessonUpdate($id: UUID!, $namePL2: String!) {
+  plannedLessonUpdate(lesson: {lastchange: "", id: $id, name: $namePL2}) {
+    id
+    msg
+  }
+}
+
+mutation plannedLessonRemove($id: UUID!) {
+  plannedLessonRemove(id: $id) {
+    id
+    msg
+  }
+}
+
+variables = {
+  "id":"b754e3e1-3621-4133-8f51-26f678d93201",
+  "name": "name",
+  "namePL": "namePL",
+  "namePL2": "namePL2"
+ }
+
+############################################################################
+############################################################################
+############################################################################
+
+############################################################################
+############################################################################
+############################################################################
+
+## plannedLessonsFacilities
+
+mutation plannedLessonFacilityInsert($idFA: UUID!, $id: UUID!, $idPL: UUID!) {
+  plannedLessonFacilityInsert(
+    facility: {facilityId: $idFA, planlessonId: $idPL, id: $id}
+  ) {
+    id
+    msg
+  }
+}
+
+query plannedLessonFacilityById($id: UUID!) {
+  plannedLessonFacilityById(id: $id) {
+    id
+    lastchange
+    facilities {
+      id
+    }
+  }
+}
+
+query plannedLessonFacilityPage {
+  plannedLessonFacilityPage {
+    id
+    lastchange
+  }
+}
+
+mutation plannedLessonFacilityRemove($id: UUID!) {
+  plannedLessonFacilityRemove(id: $id) {
+    id
+    msg
+  }
+}
+
+{
+  "id":"fbe258bb-6a04-48c2-b2e2-8734437d054d",
+  "idFA": "6627654a-a7b3-11ed-b76e-0242ac110002",
+  "idPL": "2e1b10de-a366-4eda-a007-07aed6abde9d"
+}
+
+mutation plannedLessonFacilityUpdate($idFA: UUID!, $id: UUID!, $idPLUvod: UUID!) {
+  plannedLessonFacilityUpdate(
+    facility: {lastchange: "2024-03-08T01:46:02.919169", facilityId: $idFA, id: $id, planlessonId: $idPLUvod}
+  ) {
+    id
+    msg
+  }
+}
+
+############################################################################
+############################################################################
+############################################################################
+
+############################################################################
+############################################################################
+############################################################################
+
+##plannedLessonGroup
+
+query plannedLessonGroupPage {
+  plannedLessonGroupPage {
+    id
+    lastchange
+    groups {
+      id
+    }
+  }
+}
+
+mutation plannedLessonGroupInsert($idGR: UUID!, $id: UUID!, $idPL: UUID!) {
+  plannedLessonGroupInsert(group: {groupId: $idGR, planlessonId: $idPL, id: $id}) {
+    id
+    msg
+  }
+}
+
+query plannedLessonGroupById($id: UUID!) {
+  plannedLessonGroupById(id: $id) {
+    id
+    lastchange
+    planLesson {
+      id
+      name
+      lastchange
+    }
+  }
+}
+
+mutation plannedLessonGroupRemove($id: UUID!) {
+  plannedLessonGroupRemove(id: $id) {
+    id
+    msg
+  }
+}
+
+{
+  "idGR":"9baf3b54-ae0f-11ed-9bd8-0242ac110002",
+  "id":"244c873d-b911-4bb0-8f6c-40c843306301",
+  "idPL": "2e1b10de-a366-4eda-a007-07aed6abde9d"
+ }
+
+mutation plannedLessonGroupUpdate($idGR: UUID!, $id: UUID!, $idPLUvod: UUID!) {
+  plannedLessonGroupUpdate(
+    group: {id: $id, lastchange: "2024-03-08T01:16:33.129094", groupId: $idGR, planlessonId: $idPLUvod}
+  ) {
+    id
+    msg
+    group {
+      id
+      lastchange
+    }
+  }
+}
+
+query plannedLessonGroupById($id: UUID!) {
+  plannedLessonGroupById(id: $id) {
+    id
+    lastchange
+    planLesson {
+      id
+      lastchange
+      name
+    }
+  }
+}
+
+{
+  "idGR":"9baf3b54-ae0f-11ed-9bd8-0242ac110002",
+  "id":"244c873d-b911-4bb0-8f6c-40c843306301",
+  "idPLUvod": "704e7bc2-b1d6-4fe3-95ce-b008b352dd59"
+ }
+
+############################################################################
+############################################################################
+############################################################################
+
+############################################################################
+############################################################################
+############################################################################
+
+##plannedLessonUser
+
+query plannedLessonUserPage {
+  plannedLessonUserPage {
+    id
+    lastchange
+    users {
+      id
+    }
+  }
+}
+
+mutation plannedLessonUserInsert($idUSR: UUID!, $idPL: UUID!) {
+  plannedLessonUserInsert(user: {userId: $idUSR, planlessonId: $idPL}) {
+    id
+    msg
+    user {
+      id
+      lastchange
+    }
+  }
+}
+
+{
+  "idUSR":"2d9dc5ca-a4a2-11ed-b9df-0242ac120003",
+  "idPL": "2e1b10de-a366-4eda-a007-07aed6abde9d"
+ }
+
+query plannedLessonUserById {
+  plannedLessonUserById(id: "HARDCODE") {
+    id
+    lastchange
+    planLesson {
+      lastchange
+      name
+      id
+    }
+  }
+}
+
+mutation plannedLessonUserUpdate($idUSR: UUID!, $idPLUvod: UUID!,) {
+  plannedLessonUserUpdate(
+    user: {id: "HARDCODE", lastchange: "HARDCODE", userId: $idUSR, planlessonId: $idPLUvod}
+  ) {
+    id
+    msg
+    user {
+      id
+      lastchange
+    }
+  }
+}
+
+{
+  "idUSR":"2d9dc5ca-a4a2-11ed-b9df-0242ac120003",
+  "idPLUvod": "704e7bc2-b1d6-4fe3-95ce-b008b352dd59"
+ }
+
+mutation plannedLessonUserRemove {
+  plannedLessonUserRemove(id: "HARDCODE") {
+    id
+    msg
+    user {
+      planLesson {
+        id
+        name
+      }
+    }
+  }
+}
+
+#Tables
+plans
+plan_lessons
+userplan_lessons
+groupplan_lessons
+facilityplan_lessons
