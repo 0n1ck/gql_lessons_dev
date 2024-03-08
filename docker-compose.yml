@@ -57,4 +57,4 @@ services:
       timeout: 10s
       retries: 5
     ports:
-      - 31122:80
+      - 22080:80

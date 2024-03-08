@@ -47,7 +47,7 @@ class PlannedLessonGroupGQLModel(BaseGQLModel):
     @strawberryA.field(description="""Lesson plan type""")
     async def plan_lesson(self, info: strawberryA.types.Info) -> Optional ["PlannedLessonGQLModel"]:
         from .plannedLessonGQLModel import PlannedLessonGQLModel  # Import here to avoid circular dependency
-        result = await PlannedLessonGQLModel.resolve_reference(info, self.linkedlesson_id)
+        result = await PlannedLessonGQLModel.resolve_reference(info, self.planlesson_id)
         return result
     
 ###########################################################################################################################
@@ -89,16 +89,17 @@ from typing import Optional
 
 @strawberryA.input
 class PlannedLessonGroupInsertGQLModel:
+    id: Optional[uuid.UUID]
     group_id: uuid.UUID
     planlesson_id: uuid.UUID
 
 @strawberryA.input
 class PlannedLessonGroupUpdateGQLModel:
-    id: uuid.UUID = strawberryA.field(description="The ID of the group")
+    id: uuid.UUID = strawberryA.field(description="Primary key UUID")
     lastchange: datetime.datetime = strawberry.field(description="Timestamp of last change")
 
-    group_id: uuid.UUID
-    planlesson_id: uuid.UUID
+    group_id: uuid.UUID = strawberryA.field(description="Id of group")
+    planlesson_id: uuid.UUID = strawberryA.field(description="Id of planned lesson")
     
 @strawberryA.type(description="Result of a mutation for group type")
 class PlannedLessonGroupResultGQLModel:
@@ -112,8 +113,8 @@ class PlannedLessonGroupResultGQLModel:
 
 @strawberryA.input
 class PlannedLessonGroupDeleteGQLModel:
-    group_id: uuid.UUID
-    planlesson_id: uuid.UUID
+    group_id: uuid.UUID = strawberryA.field(description="Id of group")
+    planlesson_id: uuid.UUID = strawberryA.field(description="Id of planned lesson")
     
 
 ###########################################################################################################################
@@ -122,7 +123,7 @@ class PlannedLessonGroupDeleteGQLModel:
 #                                                                                                                         #
 ###########################################################################################################################
 
-@strawberryA.mutation(description="Adds a new group.")
+@strawberryA.mutation(description="Adds a new group to groupplan_lesson .")
 async def planned_lesson_group_insert(self, info: strawberryA.types.Info, group: PlannedLessonGroupInsertGQLModel) -> PlannedLessonGroupResultGQLModel:
     # user = getUserFromInfo(info)
     # group.createdby = uuid.UUID(user["id"])

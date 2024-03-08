@@ -46,7 +46,7 @@ class PlannedLessonUserGQLModel(BaseGQLModel):
     @strawberryA.field(description="""Lesson plan type""")
     async def plan_lesson(self, info: strawberryA.types.Info) -> Optional ["PlannedLessonGQLModel"]:
         from .plannedLessonGQLModel import PlannedLessonGQLModel  # Import here to avoid circular dependency
-        result = await PlannedLessonGQLModel.resolve_reference(info, self.linkedlesson_id)
+        result = await PlannedLessonGQLModel.resolve_reference(info, self.planlesson_id)
         return result
     
 ###########################################################################################################################
@@ -88,12 +88,13 @@ from typing import Optional
 
 @strawberryA.input
 class PlannedLessonUserInsertGQLModel:
-    user_id: uuid.UUID
-    planlesson_id: uuid.UUID
+    #id: uuid.UUID = strawberryA.field(description="Primary key UUID")
+    user_id: uuid.UUID = strawberryA.field(description="The ID of the user")
+    planlesson_id: uuid.UUID = strawberryA.field(description="The ID of planned lesson")
 
 @strawberryA.input
 class PlannedLessonUserUpdateGQLModel:
-    id: uuid.UUID = strawberryA.field(description="The ID of the user")
+    id: uuid.UUID = strawberryA.field(description="Primary key UUID")
     lastchange: datetime.datetime = strawberry.field(description="Timestamp of last change")
 
     user_id: uuid.UUID

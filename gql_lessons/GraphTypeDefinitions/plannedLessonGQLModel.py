@@ -205,21 +205,21 @@ class PlannedLessonInsertGQLModel:
 class PlannedLessonUpdateGQLModel:
     lastchange: datetime.datetime = strawberryA.field(default=None, description="time stamp")
     id: uuid.UUID = strawberryA.field(default=None, description="primary key value")
-    order: Optional[int] = None
-    name: Optional[str] = None
-    length: Optional[int] = None
-    startdate: Optional[datetime.datetime] = None
+    order: Optional[int] = strawberryA.field(default=None, description="Planned lesson order")
+    name: Optional[str] = strawberryA.field(default=None, description="Planned lesson name")
+    length: Optional[int] = strawberryA.field(default=None, description="Planned lesson length 1 = 45 min")
+    startdate: Optional[datetime.datetime] = strawberryA.field(default=None, description="Planned lesson startdate")
 
-    linkedlesson_id: Optional[uuid.UUID] = None
-    topic_id: Optional[uuid.UUID] = None
-    lessontype_id: Optional[uuid.UUID] = None
-    semester_id: Optional[uuid.UUID] = None
-    event_id: Optional[uuid.UUID] = None
+    linkedlesson_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="Id of another Lesson linked to a planned lesson")
+    topic_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="Id of Topic linked to planned lesson")
+    lessontype_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="Id of Type linked to planned lesson")
+    semester_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="Id of Semester linked to planned lesson")
+    event_id: Optional[uuid.UUID] = strawberryA.field(default=None, description="Id of Event linked to planned lesson")
 
 @strawberryA.type
 class PlannedLessonResultGQLModel:
-    id: Union[uuid.UUID, None] = None
-    msg: str = None
+    id: Union[uuid.UUID, None] = strawberryA.field(default=None, description="Primary key UUID of planned lesson")
+    msg: str = strawberryA.field(description="Result of the operation (OK/Fail)", default=None)
 
     @strawberryA.field(description="""Result of lesson operation""")
     async def lesson(self, info: strawberryA.types.Info) -> Union[PlannedLessonGQLModel, None]:
@@ -229,9 +229,9 @@ class PlannedLessonResultGQLModel:
 
 @strawberryA.input
 class PlannedLessonDeleteGQLModel:
-    lastchange: datetime.datetime
-    id: uuid.UUID
-    plan_id: Optional[uuid.UUID] = None
+    lastchange: datetime.datetime = strawberryA.field(description="Lastchange of planned lesson")
+    id: uuid.UUID = strawberryA.field(description="Primary key UUID")
+    plan_id: Optional[uuid.UUID] = strawberryA.field(description="Id of linked plan to planned lesson")
 
 ###########################################################################################################################
 #                                                                                                                         #
@@ -239,7 +239,7 @@ class PlannedLessonDeleteGQLModel:
 #                                                                                                                         #
 ###########################################################################################################################
 
-@strawberryA.mutation(description="Adds a new lesson.")
+@strawberryA.mutation(description="Adds a lessons to plan_lessons table.")
 async def planned_lesson_insert(self, info: strawberryA.types.Info, lesson: PlannedLessonInsertGQLModel) -> PlannedLessonResultGQLModel:
     # user = getUserFromInfo(info)
     # lesson.createdby = uuid.UUID(user["id"])
@@ -250,7 +250,7 @@ async def planned_lesson_insert(self, info: strawberryA.types.Info, lesson: Plan
     result.id = row.id
     return result
 
-@strawberryA.mutation(description="Update the lesson.",)
+@strawberryA.mutation(description="Update the lesson in plan_lessons table.",)
 async def planned_lesson_update(self, info: strawberryA.types.Info, lesson: PlannedLessonUpdateGQLModel) -> PlannedLessonResultGQLModel:
     # user = getUserFromInfo(info)
     # lesson.changedby = uuid.UUID(user["id"])
@@ -263,7 +263,7 @@ async def planned_lesson_update(self, info: strawberryA.types.Info, lesson: Plan
     return result
 
 @strawberry.mutation(
-    description="Delete the planned lesson.")
+    description="Deletes the planned lesson from plan_lessons table.")
 async def planned_lesson_remove(self, info: strawberryA.types.Info, id: uuid.UUID) -> PlannedLessonResultGQLModel:
     loader = getLoadersFromInfo(info).plan_lessons
     row = await loader.delete(id=id)

@@ -43,11 +43,11 @@ class PlanGQLModel(BaseGQLModel):
         from .externals import AcSemesterGQLModel
         return AcSemesterGQLModel(id=self.semester_id)
     
-###########################################################################################################################
-#                                                                                                                         #
-#                                                       Query                                                             #
-#                                                                                                                         #
-###########################################################################################################################
+##########################################################################################################################
+#                                                                                                                        #
+#                                                      Query                                                             #
+#                                                                                                                        #
+##########################################################################################################################
 
 from contextlib import asynccontextmanager
 
@@ -73,34 +73,35 @@ async def plan_page(
 
 plan_by_id = createRootResolver_by_id(PlanGQLModel, description="Returns plan by its id")
 
-###########################################################################################################################
-#                                                                                                                         #
-#                                                       Models                                                            #
-#                                                                                                                         #
-###########################################################################################################################
+##########################################################################################################################
+#                                                                                                                        #
+#                                                      Models                                                            #
+#                                                                                                                        #
+##########################################################################################################################
 
 from typing import Optional
 
 @strawberryA.input
 class PlanInsertGQLModel:
-    name: Optional[str] = None
-    name_en: Optional[str] = ""
-    type_id: Optional[uuid.UUID] = None
+    id: Optional[uuid.UUID]
+    name: Optional[str] = strawberryA.field(description="Name of plan")
+    name_en: Optional[str] = strawberryA.field(description="Name of plan in english", default=None)
+    type_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the lesson type in plan", default=None)
     semester_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the semester associated with the plan ", default=None)
 
 @strawberryA.input
 class PlanUpdateGQLModel:
-    lastchange: datetime.datetime
-    id: uuid.UUID = strawberryA.field(description="primary key (UUID), identifies object of operation")
-    name: Optional[str] = None
-    name_en: Optional[str] = None
-    type_id: Optional[uuid.UUID] = None
+    lastchange: datetime.datetime = strawberryA.field(description="Time of when was plan last changed", default=None)
+    id: uuid.UUID = strawberryA.field(description="primary key (UUID), identifies object of plan")
+    name: Optional[str] = strawberryA.field(description="Name of plan", default=None)
+    name_en: Optional[str] = strawberryA.field(description="Name of plan in english", default=None)
+    type_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the lesson type in plan", default=None)
     semester_id: Optional[uuid.UUID] = strawberryA.field(description="The ID of the semester associated with the plan ", default=None)
     
 @strawberryA.type
 class PlanResultGQLModel:
-    id: strawberryA.ID = strawberryA.field(default=None, description="primary key value")
-    msg: str = None
+    id: strawberryA.ID = strawberryA.field(default=None, description="primary key value of plan")
+    msg: str = strawberryA.field(description="Result of the operation (OK/Fail)", default=None)
 
     @strawberryA.field(description="""Result of plan operation""")
     async def plan(self, info: strawberryA.types.Info) -> Optional[PlanGQLModel]:
@@ -109,17 +110,17 @@ class PlanResultGQLModel:
     
 @strawberryA.input
 class PlanDeleteGQLModel:
-    lastchange: datetime.datetime
-    id: uuid.UUID
-    plan_id: Optional[uuid.UUID] = None
+    lastchange: datetime.datetime = strawberryA.field(description="Time of when was plan last changed", default=None)
+    id: uuid.UUID = strawberryA.field(description="primary key (UUID), identifies object of plan", default=None)
+    #plan_id: Optional[uuid.UUID] = None
 
-###########################################################################################################################
-#                                                                                                                         #
-#                                                       Mutations                                                         #
-#                                                                                                                         #
-###########################################################################################################################
+##########################################################################################################################
+#                                                                                                                        #
+#                                                      Mutations                                                         #
+#                                                                                                                        #
+##########################################################################################################################
 
-@strawberryA.mutation(description="Adds a new plan.")
+@strawberryA.mutation(description="Adds a new plan in table plans.")
 async def plan_insert(self, info: strawberryA.types.Info, plan: PlanInsertGQLModel) -> PlanResultGQLModel:
     # user = getUserFromInfo(info)
     # plan.createdby = uuid.UUID(user["id"])
@@ -130,7 +131,7 @@ async def plan_insert(self, info: strawberryA.types.Info, plan: PlanInsertGQLMod
     result.id = row.id
     return result
 
-@strawberryA.mutation(description="Update the plan.",)
+@strawberryA.mutation(description="Update the plan in table plans.",)
 async def plan_update(self, info: strawberryA.types.Info, plan: PlanUpdateGQLModel) -> PlanResultGQLModel:
     # user = getUserFromInfo(info)
     # plan.changedby = uuid.UUID(user["id"])
@@ -142,7 +143,7 @@ async def plan_update(self, info: strawberryA.types.Info, plan: PlanUpdateGQLMod
     result.msg = "ok" if (row is not None) else "fail"
     return result
 
-@strawberry.mutation(description="Delete the plan.")
+@strawberry.mutation(description="Delete the plan in table plans.")
 async def plan_remove(self, info: strawberryA.types.Info, id: uuid.UUID) -> PlanResultGQLModel:
     loader = getLoadersFromInfo(info).plans
     row = await loader.delete(id=id)
